@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Parts Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#14161a;
+    --surface:#1d2026;
+    --surface-2:#252932;
+    --border:#323844;
+    --text:#eceef1;
+    --text-dim:#8b93a1;
+    --new:#4c8bf5;
+    --used:#f2a900;
+    --danger:#e5484d;
+    --danger-dim:#3a2226;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #app{max-width:640px;margin:0 auto;padding:16px 16px 80px;}
+
+  header.top{padding:18px 4px 14px;border-bottom:1px solid var(--border);margin-bottom:16px;}
+  header.top h1{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:38px;
+    letter-spacing:1.5px;
+    margin:0;
+    line-height:1;
+  }
+  header.top .sub{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--used);
+    margin-top:6px;
+  }
+  .stats{display:flex;gap:10px;margin-top:14px;}
+  .stat{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;}
+  .stat .n{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;}
+  .stat .l{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+  .stat.new .n{color:var(--new);}
+  .stat.used .n{color:var(--used);}
+
+  nav.tabs{display:flex;gap:8px;margin-bottom:18px;}
+  nav.tabs button{
+    flex:1;padding:10px 6px;border-radius:999px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text-dim);font-size:13px;font-weight:600;
+    cursor:pointer;transition:all .15s ease;font-family:'IBM Plex Sans',sans-serif;
+  }
+  nav.tabs button.active{background:var(--text);color:var(--bg);border-color:var(--text);}
+
+  .panel{display:none;}
+  .panel.active{display:block;animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px;}
+  .field input,.field select,.field textarea{
+    width:100%;padding:11px 12px;background:var(--surface);border:1px solid var(--border);
+    border-radius:8px;color:var(--text);font-size:15px;font-family:'IBM Plex Sans',sans-serif;
+  }
+  .field textarea{resize:vertical;min-height:60px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  .scan-row{display:flex;gap:8px;}
+  .scan-row input{flex:1;}
+  button.btn{
+    padding:11px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);
+    color:var(--text);font-weight:600;font-size:14px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;
+  }
+  button.btn.primary{background:var(--new);border-color:var(--new);color:#08111f;}
+  button.btn.primary.used{background:var(--used);border-color:var(--used);}
+  button.btn.full{width:100%;padding:13px;font-size:15px;margin-top:6px;}
+  button.btn.ghost{background:transparent;}
+  button.btn.danger{background:var(--danger-dim);border-color:var(--danger);color:#ffb3b5;}
+
+  .photo-preview{margin-top:8px;border-radius:8px;overflow:hidden;border:1px solid var(--border);max-width:160px;}
+  .photo-preview img{width:100%;display:block;}
+
+  /* Hangtag card */
+  .search-bar{margin-bottom:14px;}
+  .filter-chips{display:flex;gap:8px;margin-bottom:14px;}
+  .filter-chips button{
+    padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:transparent;
+    color:var(--text-dim);font-size:12px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;
+  }
+  .filter-chips button.active{background:var(--surface-2);color:var(--text);border-color:var(--text-dim);}
+
+  .tag-card{
+    position:relative;display:flex;gap:0;align-items:stretch;
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;
+    margin-bottom:10px;overflow:hidden;cursor:pointer;
+  }
+  .tag-card .hole-col{
+    width:26px;flex-shrink:0;background:var(--surface-2);position:relative;
+    border-right:2px dashed var(--border);
+  }
+  .tag-card .hole-col::before{
+    content:'';position:absolute;top:12px;left:50%;transform:translateX(-50%);
+    width:9px;height:9px;border-radius:50%;background:var(--bg);border:1.5px solid var(--border);
+  }
+  .tag-card .body{flex:1;padding:10px 12px;min-width:0;}
+  .tag-card .top-line{display:flex;align-items:center;gap:8px;}
+  .tag-card .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .tag-card .dot.new{background:var(--new);}
+  .tag-card .dot.used{background:var(--used);}
+  .tag-card .id{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-dim);}
+  .tag-card .name{font-weight:600;font-size:15px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tag-card .meta{font-size:12px;color:var(--text-dim);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tag-card .qty{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:4px 8px;border-radius:6px;background:var(--surface-2);align-self:center;margin-right:10px;flex-shrink:0;}
+
+  .empty{text-align:center;padding:50px 20px;color:var(--text-dim);}
+  .empty .big{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--text);letter-spacing:1px;}
+
+  /* Modal */
+  .modal-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:50;
+    align-items:flex-end;justify-content:center;
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal{
+    background:var(--bg);border-top:1px solid var(--border);border-radius:16px 16px 0 0;
+    width:100%;max-width:640px;max-height:88vh;overflow-y:auto;padding:20px;
+    animation:slideup .2s ease;
+  }
+  @keyframes slideup{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal h2{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;margin:0 0 14px;}
+  .modal-close{position:sticky;top:0;text-align:right;}
+  .modal-close span{cursor:pointer;color:var(--text-dim);font-size:14px;}
+
+  #reader{width:100%;border-radius:8px;overflow:hidden;background:#000;}
+  .scan-msg{font-size:13px;color:var(--text-dim);margin-top:10px;text-align:center;}
+
+  .qr-box{background:#fff;padding:16px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .qr-box .tagid{font-family:'IBM Plex Mono',monospace;color:#111;font-weight:600;font-size:15px;}
+
+  .detail-photo{width:100%;border-radius:8px;margin-bottom:14px;border:1px solid var(--border);}
+  .detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px;}
+  .detail-row .k{color:var(--text-dim);}
+  .detail-row .v{font-weight:500;text-align:right;max-width:60%;}
+
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:var(--text);color:var(--bg);padding:10px 18px;border-radius:999px;
+    font-size:13px;font-weight:600;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s ease;
+  }
+  .toast.show{opacity:1;}
+
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{position:absolute;top:0;left:0;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="top">
+    <h1>PARTS LEDGER</h1>
+    <div class="sub">inventory intake · motor spares</div>
+    <div class="stats">
+      <div class="stat"><div class="n" id="statTotal">0</div><div class="l">Total items</div></div>
+      <div class="stat new"><div class="n" id="statNew">0</div><div class="l">Serialized</div></div>
+      <div class="stat used"><div class="n" id="statUsed">0</div><div class="l">Untracked</div></div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="newTab">+ New part</button>
+    <button class="tab-btn" data-tab="usedTab">+ Used part</button>
+    <button class="tab-btn" data-tab="listTab">Inventory</button>
+  </nav>
+
+  <!-- NEW / SERIALIZED PANEL -->
+  <section class="panel active" id="newTab">
+    <div class="field">
+      <label>Serial / barcode number</label>
+      <div class="scan-row">
+        <input type="text" id="newSerial" placeholder="Scan or type serial number">
+        <button class="btn" id="newScanBtn">📷 Scan</button>
+      </div>
+    </div>
+    <div class="field"><label>Category</label>
+      <select id="newCategory">
+        <option>Engine</option><option>Transmission</option><option>Suspension</option>
+        <option>Brakes</option><option>Electrical</option><option>Cooling System</option>
+        <option>Fuel System</option><option>Exhaust</option><option>Belts & Hoses</option>
+        <option>Filters</option><option>Body / Exterior</option><option>Interior</option><option>Other</option>
+      </select>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Brand</label><input type="text" id="newBrand" placeholder="e.g. Bosch"></div>
+      <div class="field"><label>Part name</label><input type="text" id="newName" placeholder="e.g. Alternator"></div>
+    </div>
+    <div class="field"><label>Compatible models</label><input type="text" id="newModels" placeholder="e.g. Toyota Corolla 2010–2015"></div>
+    <div class="row2">
+      <div class="field"><label>Quantity</label><input type="number" id="newQty" value="1" min="0"></div>
+      <div class="field"><label>Bin location</label><input type="text" id="newBin" placeholder="e.g. A3-Shelf2"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Cost price</label><input type="number" id="newCost" placeholder="0"></div>
+      <div class="field"><label>Sell price</label><input type="number" id="newSell" placeholder="0"></div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="newNotes" placeholder="Optional"></textarea></div>
+    <div class="field">
+      <label>Photo</label>
+      <button class="btn" id="newPhotoBtn">📸 Take / choose photo</button>
+      <input type="file" accept="image/*" capture="environment" id="newPhotoInput" style="display:none">
+      <div class="photo-preview" id="newPhotoPreview" style="display:none"><img id="newPhotoImg"></div>
+    </div>
+    <button class="btn primary full" id="saveNewBtn">Save serialized part</button>
+  </section>
+
+  <!-- USED / UNTRACKED PANEL -->
+  <section class="panel" id="usedTab">
+    <div class="field">
+      <label>Category</label>
+      <select id="usedCategory">
+        <option>Engine (used)</option><option>Transmission</option><option>Suspension</option>
+        <option>Brakes</option><option>Electrical</option><option>Cooling System</option>
+        <option>Fuel System</option><option>Exhaust</option><option>Belts & Hoses</option>
+        <option>Body / Exterior</option><option>Interior</option><option>Other</option>
+      </select>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Brand / make</label><input type="text" id="usedBrand" placeholder="e.g. Honda"></div>
+      <div class="field"><label>Part name</label><input type="text" id="usedName" placeholder="e.g. 1.8L Engine"></div>
+    </div>
+    <div class="field"><label>Compatible models</label><input type="text" id="usedModels" placeholder="e.g. Honda Civic 2006–2011"></div>
+    <div class="field"><label>Condition</label>
+      <select id="usedCondition">
+        <option>Used – Good</option><option>Used – Fair</option><option>Refurbished</option><option>For parts / salvage</option>
+      </select>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Quantity</label><input type="number" id="usedQty" value="1" min="0"></div>
+      <div class="field"><label>Bin location</label><input type="text" id="usedBin" placeholder="e.g. Yard-B"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Cost price</label><input type="number" id="usedCost" placeholder="0"></div>
+      <div class="field"><label>Sell price</label><input type="number" id="usedSell" placeholder="0"></div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="usedNotes" placeholder="Condition details, damage, etc."></textarea></div>
+    <div class="field">
+      <label>Photo</label>
+      <button class="btn" id="usedPhotoBtn">📸 Take / choose photo</button>
+      <input type="file" accept="image/*" capture="environment" id="usedPhotoInput" style="display:none">
+      <div class="photo-preview" id="usedPhotoPreview" style="display:none"><img id="usedPhotoImg"></div>
+    </div>
+    <button class="btn primary used full" id="saveUsedBtn">Save & generate tag</button>
+  </section>
+
+  <!-- INVENTORY LIST PANEL -->
+  <section class="panel" id="listTab">
+    <div class="field search-bar">
+      <input type="text" id="searchInput" placeholder="Search by name, brand, model or ID">
+    </div>
+    <div class="filter-chips">
+      <button class="chip active" data-filter="all">All</button>
+      <button class="chip" data-filter="new">Serialized</button>
+      <button class="chip" data-filter="used">Untracked</button>
+    </div>
+    <div id="itemList"></div>
+  </section>
+
+</div>
+
+<!-- Scanner modal -->
+<div class="modal-backdrop" id="scannerModal">
+  <div class="modal">
+    <div class="modal-close"><span id="closeScannerBtn">✕ Close</span></div>
+    <h2>Scan barcode</h2>
+    <div id="reader"></div>
+    <div class="scan-msg" id="scanMsg">Point the camera at the barcode.</div>
+  </div>
+</div>
+
+<!-- QR tag modal (shown after saving a used part) -->
+<div class="modal-backdrop" id="tagModal">
+  <div class="modal">
+    <div class="modal-close"><span id="closeTagBtn">✕ Close</span></div>
+    <h2>Print this tag</h2>
+    <p style="color:var(--text-dim);font-size:13px;margin-top:-8px;">Stick this on the item now — this QR code is its permanent ID.</p>
+    <div id="printArea">
+      <div class="qr-box">
+        <img id="qrImg" style="width:180px;height:180px;">
+        <div class="tagid" id="qrTagId"></div>
+      </div>
+    </div>
+    <button class="btn full" id="printTagBtn" style="margin-top:14px;">🖨️ Print tag</button>
+  </div>
+</div>
+
+<!-- Item detail modal -->
+<div class="modal-backdrop" id="detailModal">
+  <div class="modal">
+    <div class="modal-close"><span id="closeDetailBtn">✕ Close</span></div>
+    <img id="detailPhoto" class="detail-photo" style="display:none;">
+    <h2 id="detailName"></h2>
+    <div id="detailBody"></div>
+    <button class="btn danger full" id="deleteItemBtn" style="margin-top:16px;">Delete item</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const API_BASE = '';   // same-origin. Change this if you ever host frontend/backend separately.
+
+  let allItems = [];          // full list, for stats
+  let currentDetailId = null;
+  let pendingPhoto = { new: null, used: null };   // holds a Blob, not base64
+  let html5QrCode = null;
+  let searchDebounce = null;
+
+  function toast(msg){
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  async function apiFetch(path, options){
+    try{
+      const res = await fetch(API_BASE + path, options);
+      if(!res.ok){
+        const body = await res.json().catch(()=>({}));
+        throw new Error(body.detail || ('HTTP '+res.status));
+      }
+      return res;
+    }catch(e){
+      toast('Can\'t reach the server — is it running?');
+      throw e;
+    }
+  }
+
+  // ---------- Tabs ----------
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      $(btn.dataset.tab).classList.add('active');
+      if(btn.dataset.tab === 'listTab') refreshAll();
+    });
+  });
+
+  // ---------- Photo capture (shared logic) ----------
+  function wirePhoto(prefix){
+    $(prefix+'PhotoBtn').addEventListener('click', ()=> $(prefix+'PhotoInput').click());
+    $(prefix+'PhotoInput').addEventListener('change', e=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ev=>{
+        const img = new Image();
+        img.onload = ()=>{
+          const maxW = 800;
+          const scale = Math.min(1, maxW/img.width);
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width*scale; canvas.height = img.height*scale;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img,0,0,canvas.width,canvas.height);
+          $(prefix+'PhotoImg').src = canvas.toDataURL('image/jpeg',0.6);
+          $(prefix+'PhotoPreview').style.display = 'block';
+          canvas.toBlob(blob=>{ pendingPhoto[prefix] = blob; }, 'image/jpeg', 0.6);
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  wirePhoto('new');
+  wirePhoto('used');
+
+  async function uploadPhoto(itemId, blob){
+    if(!blob) return;
+    const form = new FormData();
+    form.append('file', blob, itemId+'.jpg');
+    try{
+      await apiFetch(`/items/${itemId}/photo`, { method:'POST', body: form });
+    }catch(e){ console.error('photo upload failed', e); }
+  }
+
+  // ---------- Barcode scanner (unchanged — pure client-side camera, no backend involved) ----------
+  let scanTarget = null;
+  $('newScanBtn').addEventListener('click', ()=>{
+    scanTarget = 'newSerial';
+    $('scannerModal').classList.add('open');
+    startScanner();
+  });
+  $('closeScannerBtn').addEventListener('click', stopScanner);
+
+  function startScanner(){
+    $('scanMsg').textContent = 'Point the camera at the barcode.';
+    try{
+      html5QrCode = new Html5Qrcode("reader");
+      const config = {
+        fps: 10, qrbox: 230,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_39
+        ]
+      };
+      html5QrCode.start({ facingMode:"environment" }, config,
+        (decodedText)=>{
+          if(scanTarget) $(scanTarget).value = decodedText;
+          toast('Scanned: '+decodedText);
+          stopScanner();
+        },
+        ()=>{ /* per-frame miss, ignore */ }
+      ).catch(()=>{
+        $('scanMsg').textContent = 'Camera unavailable — close this and type the serial manually.';
+      });
+    }catch(e){
+      $('scanMsg').textContent = 'Camera unavailable — close this and type the serial manually.';
+    }
+  }
+  function stopScanner(){
+    if(html5QrCode){
+      html5QrCode.stop().then(()=>{ html5QrCode.clear(); html5QrCode=null; $('scannerModal').classList.remove('open'); })
+        .catch(()=>{ $('scannerModal').classList.remove('open'); html5QrCode=null; });
+    } else {
+      $('scannerModal').classList.remove('open');
+    }
+  }
+
+  // ---------- Save new (serialized) ----------
+  $('saveNewBtn').addEventListener('click', async ()=>{
+    const name = $('newName').value.trim();
+    if(!name){ toast('Enter a part name'); return; }
+    const payload = {
+      track:'new',
+      category: $('newCategory').value,
+      brand: $('newBrand').value.trim(),
+      part_name: name,
+      models: $('newModels').value.trim(),
+      condition: 'New',
+      serial: $('newSerial').value.trim(),
+      quantity: Number($('newQty').value)||0,
+      bin_location: $('newBin').value.trim(),
+      cost_price: Number($('newCost').value)||0,
+      sell_price: Number($('newSell').value)||0,
+      notes: $('newNotes').value.trim()
+    };
+    try{
+      const res = await apiFetch('/items', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      const item = await res.json();
+      await uploadPhoto(item.id, pendingPhoto.new);
+      pendingPhoto.new = null;
+      clearForm('new');
+      toast('Saved '+item.id);
+      await refreshAll();
+    }catch(e){ /* apiFetch already toasted */ }
+  });
+
+  // ---------- Save used (untracked) ----------
+  $('saveUsedBtn').addEventListener('click', async ()=>{
+    const name = $('usedName').value.trim();
+    if(!name){ toast('Enter a part name'); return; }
+    const payload = {
+      track:'used',
+      category: $('usedCategory').value,
+      brand: $('usedBrand').value.trim(),
+      part_name: name,
+      models: $('usedModels').value.trim(),
+      condition: $('usedCondition').value,
+      serial: '',
+      quantity: Number($('usedQty').value)||0,
+      bin_location: $('usedBin').value.trim(),
+      cost_price: Number($('usedCost').value)||0,
+      sell_price: Number($('usedSell').value)||0,
+      notes: $('usedNotes').value.trim()
+    };
+    try{
+      const res = await apiFetch('/items', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      const item = await res.json();
+      await uploadPhoto(item.id, pendingPhoto.used);
+      pendingPhoto.used = null;
+      clearForm('used');
+      await refreshAll();
+      showTag(item.id);
+    }catch(e){ /* apiFetch already toasted */ }
+  });
+
+  function clearForm(prefix){
+    ['Brand','Name','Models','Notes'].forEach(f=>{ const el=$(prefix+f); if(el) el.value=''; });
+    if($(prefix+'Qty')) $(prefix+'Qty').value = 1;
+    if($(prefix+'Cost')) $(prefix+'Cost').value = '';
+    if($(prefix+'Sell')) $(prefix+'Sell').value = '';
+    if($(prefix+'Bin')) $(prefix+'Bin').value = '';
+    if(prefix==='new') $('newSerial').value = '';
+    $(prefix+'PhotoPreview').style.display = 'none';
+  }
+
+  function showTag(id){
+    $('qrImg').src = `${API_BASE}/items/${id}/label?t=${Date.now()}`;
+    $('qrTagId').textContent = id;
+    $('tagModal').classList.add('open');
+  }
+  $('closeTagBtn').addEventListener('click', ()=> $('tagModal').classList.remove('open'));
+  $('printTagBtn').addEventListener('click', ()=> window.print());
+
+  // ---------- List rendering ----------
+  let currentFilter = 'all';
+  document.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      currentFilter = chip.dataset.filter;
+      fetchAndRenderList();
+    });
+  });
+  $('searchInput').addEventListener('input', ()=>{
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(fetchAndRenderList, 250);
+  });
+
+  async function refreshAll(){
+    await refreshStats();
+    await fetchAndRenderList();
+  }
+
+  async function refreshStats(){
+    try{
+      const res = await apiFetch('/items');
+      allItems = await res.json();
+      $('statTotal').textContent = allItems.length;
+      $('statNew').textContent = allItems.filter(i=>i.track==='new').length;
+      $('statUsed').textContent = allItems.filter(i=>i.track==='used').length;
+    }catch(e){ /* apiFetch already toasted */ }
+  }
+
+  async function fetchAndRenderList(){
+    const params = new URLSearchParams();
+    if(currentFilter!=='all') params.set('track', currentFilter);
+    const q = $('searchInput').value.trim();
+    if(q) params.set('search', q);
+    let items = [];
+    try{
+      const res = await apiFetch('/items?'+params.toString());
+      items = await res.json();
+    }catch(e){ return; }
+
+    const list = $('itemList');
+    if(items.length===0){
+      list.innerHTML = '<div class="empty"><div class="big">No parts here yet</div>Add a new or used part above to get started.</div>';
+      return;
+    }
+    list.innerHTML = items.map(i=>`
+      <div class="tag-card" data-id="${i.id}">
+        <div class="hole-col"></div>
+        <div class="body">
+          <div class="top-line">
+            <span class="dot ${i.track}"></span>
+            <span class="id">${i.id}</span>
+          </div>
+          <div class="name">${escapeHtml(i.part_name)}</div>
+          <div class="meta">${escapeHtml(i.brand||'—')} · ${escapeHtml(i.category)} ${i.models? '· '+escapeHtml(i.models):''}</div>
+        </div>
+        <div class="qty">×${i.quantity}</div>
+      </div>
+    `).join('');
+    list.querySelectorAll('.tag-card').forEach(card=>{
+      card.addEventListener('click', ()=> openDetail(card.dataset.id));
+    });
+  }
+
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- Detail modal ----------
+  async function openDetail(id){
+    let item;
+    try{
+      const res = await apiFetch(`/items/${id}`);
+      item = await res.json();
+    }catch(e){ return; }
+    currentDetailId = id;
+    $('detailName').textContent = item.part_name;
+    const rows = [
+      ['ID', item.id],
+      ['Track', item.track==='new' ? 'Serialized (new)' : 'Untracked (used)'],
+      ['Category', item.category],
+      ['Brand', item.brand||'—'],
+      ['Condition', item.condition],
+      ['Serial', item.serial||'—'],
+      ['Compatible models', item.models||'—'],
+      ['Quantity', item.quantity],
+      ['Bin location', item.bin_location||'—'],
+      ['Cost price', item.cost_price],
+      ['Sell price', item.sell_price],
+      ['Notes', item.notes||'—'],
+      ['Added', new Date(item.date_added).toLocaleDateString()]
+    ];
+    $('detailBody').innerHTML = rows.map(([k,v])=>`<div class="detail-row"><span class="k">${k}</span><span class="v">${escapeHtml(String(v))}</span></div>`).join('');
+    const photoEl = $('detailPhoto');
+    if(item.has_photo){
+      photoEl.src = `${API_BASE}/items/${id}/photo?t=${Date.now()}`;
+      photoEl.style.display='block';
+      photoEl.onerror = ()=>{ photoEl.style.display='none'; };
+    } else {
+      photoEl.style.display='none';
+    }
+    $('detailModal').classList.add('open');
+  }
+  $('closeDetailBtn').addEventListener('click', ()=> $('detailModal').classList.remove('open'));
+  $('deleteItemBtn').addEventListener('click', async ()=>{
+    if(!currentDetailId) return;
+    if(!confirm('Delete this item permanently?')) return;
+    try{
+      await apiFetch(`/items/${currentDetailId}`, { method:'DELETE' });
+      $('detailModal').classList.remove('open');
+      toast('Item deleted');
+      await refreshAll();
+    }catch(e){ /* apiFetch already toasted */ }
+  });
+
+  refreshAll();
+})();
+</script>
+</body>
+</html>
